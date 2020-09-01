@@ -50,19 +50,27 @@
 
 (def ^:dynamic *handling* nil)    ;; remember what event we are currently handling
 
+(defn event->event-id
+  "Given an event map or vector `event`, return the event-id."
+  {:added "1.2.0"}
+  [event]
+  (if (map? event)
+    (:re-frame.core/eid event)
+    (first-in-vector event)))
+
 (defn handle
-  "Given an event vector `event-v`, look up the associated interceptor chain, and execute it."
-  [event-v]
-  (let [event-id  (first-in-vector event-v)]
+  "Given an event map or vector `event`, look up the associated interceptor chain, and execute it."
+  [event]
+  (let [event-id (event->event-id event)]
     (if-let [interceptors  (get-handler kind event-id true)]
       (if *handling*
-        (console :error "re-frame: while handling" *handling* ", dispatch-sync was called for" event-v ". You can't call dispatch-sync within an event handler.")
-        (binding [*handling*  event-v]
+        (console :error "re-frame: while handling" *handling* ", dispatch-sync was called for" event ". You can't call dispatch-sync within an event handler.")
+        (binding [*handling* event]
           (trace/with-trace {:operation event-id
                              :op-type   kind
-                             :tags      {:event event-v}}
+                             :tags      {:event event}}
             (trace/merge-trace! {:tags {:app-db-before @app-db}})
-            (interceptor/execute event-v interceptors)
+            (interceptor/execute event interceptors)
             (trace/merge-trace! {:tags {:app-db-after @app-db}})))))))
 
 

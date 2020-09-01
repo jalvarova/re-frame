@@ -174,11 +174,11 @@
 
   (-process-1st-event-in-queue
     [this]
-    (let [event-v (peek queue)]
+    (let [event-map-or-vector (peek queue)]
       (try
-        (handle event-v)
+        (handle event-map-or-vector)
         (set! queue (pop queue))
-        (-call-post-event-callbacks this event-v)
+        (-call-post-event-callbacks this event-map-or-vector)
         (catch #?(:cljs :default :clj Exception) ex
           (-fsm-trigger this :exception ex)))))
 
@@ -208,9 +208,9 @@
     (later-fn #(-fsm-trigger this :resume nil)))
 
   (-call-post-event-callbacks
-    [_ event-v]
+    [_ event-map-or-vector]
     (doseq [callback (vals post-event-callback-fns)]
-      (callback event-v queue)))
+      (callback event-map-or-vector queue)))
 
   (-resume
     [this]
@@ -231,14 +231,14 @@
 ;;
 
 (defn dispatch
-  [event]
-  (if (nil? event)
-      (throw (ex-info "re-frame: you called \"dispatch\" without an event vector." {}))
-      (push event-queue event))
-  nil)                                           ;; Ensure nil return. See https://github.com/day8/re-frame/wiki/Beware-Returning-False
+  [event-map-or-vector]
+  (if (nil? event-map-or-vector)
+    (throw (ex-info "re-frame: you called \"dispatch\" without an event map or vector." {}))
+    (push event-queue event-map-or-vector))
+  nil)                                                          ;; Ensure nil return. See https://github.com/day8/re-frame/wiki/Beware-Returning-False
 
 (defn dispatch-sync
-  [event-v]
-  (handle event-v)
-  (-call-post-event-callbacks event-queue event-v)  ;; slightly ugly hack. Run the registered post event callbacks.
-  nil)                                              ;; Ensure nil return. See https://github.com/day8/re-frame/wiki/Beware-Returning-False
+  [event-map-or-vector]
+  (handle event-map-or-vector)
+  (-call-post-event-callbacks event-queue event-map-or-vector)  ;; slightly ugly hack. Run the registered post event callbacks.
+  nil)                                                          ;; Ensure nil return. See https://github.com/day8/re-frame/wiki/Beware-Returning-False
